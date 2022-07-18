@@ -44,7 +44,16 @@ typedef struct {
 
 int fifo(int8_t** page_table, int num_pages, int prev_page,
          int fifo_frm, int num_frames, int clock) {
-    return -1;
+
+    int8_t **page_aux = page_table;
+	int i;
+
+    for(i=0; i<num_pages; i++){
+    	if(page_aux[i][PT_FRAMEID] == fifo_frm){
+    		printf(" Retorno: %d \n", i);
+    		return i;
+    	}
+	}
 }
 
 int second_chance(int8_t** page_table, int num_pages, int prev_page,
