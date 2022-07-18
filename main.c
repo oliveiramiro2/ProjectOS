@@ -52,7 +52,22 @@ int fifo(int8_t** page_table, int num_pages, int prev_page,
 
 int second_chance(int8_t** page_table, int num_pages, int prev_page,
                   int fifo_frm, int num_frames, int clock) {
-    return -1;
+
+    int i;
+
+    for(i = 0; i < num_pages; i++){
+        if(page_table[(fifo_frm+i) % num_pages][PT_REFERENCE_BIT] == 0){
+            page_table[i][PT_MAPPED] = 1;
+            page_table[i][PT_REFERENCE_BIT] = 1;
+
+            return i;
+        }
+        page_table[i][PT_REFERENCE_BIT] = 0;
+    }
+    page_table[fifo_frm][PT_MAPPED] = 1;
+    page_table[fifo_frm][PT_REFERENCE_BIT] = 1;
+
+    return fifo_frm;
 }
 
 int nru(int8_t** page_table, int num_pages, int prev_page,
