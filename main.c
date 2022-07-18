@@ -58,25 +58,31 @@ int fifo(int8_t** page_table, int num_pages, int prev_page,
 int second_chance(int8_t** page_table, int num_pages, int prev_page,
                   int fifo_frm, int num_frames, int clock) {
 
-    int i, j;
+    int i, j, aux;
 
     for(j = 0; j < num_pages; j++){
-        printf("PT_FRAMEID: %d, PT_MAPPED: %d, PT_DIRTY: %d, PT_REFERENCE_BIT: %d, PT_REFERENCE_MODE: %d, PT_AGING_COUNTER: %d\n", page_table[j][PT_FRAMEID], page_table[j][PT_MAPPED], page_table[j][PT_DIRTY], page_table[j][PT_REFERENCE_BIT], page_table[j][PT_AGING_COUNTER], page_table[j][PT_REFERENCE_MODE]);
+        if(page_table[j][PT_FRAMEID] == fifo_frm && page_table[j][PT_MAPPED] == 1){   // busca o primeiro a sair de acordo com o fifo
+            aux = j;                                                                  // guarda a posição e sai do laco
+            break;
+        }
     }
-    printf("\n\n");
 
     for(i = 0; i < num_pages; i++){
-        if(page_table[(fifo_frm+i) % num_pages][PT_REFERENCE_BIT] == 0 && page_table[i][PT_MAPPED] == 1){
-            page_table[i][PT_REFERENCE_BIT] = 1;
+        if(page_table[(aux+i) % num_pages][PT_REFERENCE_BIT] == 0 && page_table[i][PT_MAPPED] == 1){ // comeca a procurar o primeiro bit R = 0 a partir do fifo
+            page_table[i][PT_REFERENCE_BIT] = 1;                                                     // seta o bit R como 1 e o retorna
 
             return i;
         }
-        page_table[i][PT_REFERENCE_BIT] = 0;
+        page_table[i][PT_REFERENCE_BIT] = 0;                                                         // caso tenha recebido a segunda chance seu bit R vira 0
     }
-    page_table[fifo_frm][PT_MAPPED] = 1;
-    page_table[fifo_frm][PT_REFERENCE_BIT] = 1;
 
-    return fifo_frm;
+    for(i=0; i<num_pages; i++){
+    	if(page_table[i][PT_FRAMEID] == fifo_frm && page_table[i][PT_MAPPED] == 1){	   // checa se o frameid e igual ao fifo-frm e se esta mapeado
+            page_table[i][PT_REFERENCE_BIT] = 1;
+    		return i;                                                                  // retorna o valor correspondente
+    	}
+	}
+	return -1;
 }
 
 int nru(int8_t** page_table, int num_pages, int prev_page,
