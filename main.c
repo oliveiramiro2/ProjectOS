@@ -45,19 +45,28 @@ typedef struct {
 int fifo(int8_t** page_table, int num_pages, int prev_page,
          int fifo_frm, int num_frames, int clock) {
 
-    page_table[fifo_frm][PT_MAPPED] = 1;
+	int i;                                                                             // contador p/ for
 
-	return fifo_frm;
+    for(i=0; i<num_pages; i++){
+    	if(page_table[i][PT_FRAMEID] == fifo_frm && page_table[i][PT_MAPPED] == 1){	   // checa se o frameid e igual ao fifo-frm e se esta mapeado
+    		return i;                                                                  // retorna o valor correspondente
+    	}
+	}
+	return -1;
 }
 
 int second_chance(int8_t** page_table, int num_pages, int prev_page,
                   int fifo_frm, int num_frames, int clock) {
 
-    int i;
+    int i, j;
+
+    for(j = 0; j < num_pages; j++){
+        printf("PT_FRAMEID: %d, PT_MAPPED: %d, PT_DIRTY: %d, PT_REFERENCE_BIT: %d, PT_REFERENCE_MODE: %d, PT_AGING_COUNTER: %d\n", page_table[j][PT_FRAMEID], page_table[j][PT_MAPPED], page_table[j][PT_DIRTY], page_table[j][PT_REFERENCE_BIT], page_table[j][PT_AGING_COUNTER], page_table[j][PT_REFERENCE_MODE]);
+    }
+    printf("\n\n");
 
     for(i = 0; i < num_pages; i++){
-        if(page_table[(fifo_frm+i) % num_pages][PT_REFERENCE_BIT] == 0){
-            page_table[i][PT_MAPPED] = 1;
+        if(page_table[(fifo_frm+i) % num_pages][PT_REFERENCE_BIT] == 0 && page_table[i][PT_MAPPED] == 1){
             page_table[i][PT_REFERENCE_BIT] = 1;
 
             return i;
