@@ -61,7 +61,7 @@ int second_chance(int8_t** page_table, int num_pages, int prev_page,
     int i, j, aux;
 
     for(j = 0; j < num_pages; j++){
-        if(page_table[j][PT_FRAMEID] == fifo_frm && page_table[j][PT_MAPPED] == 1){   // busca o primeiro a sair de acordo com o fifo
+        if(page_table[j][PT_MAPPED] == 1 && page_table[j][PT_FRAMEID] == fifo_frm){   // busca o primeiro a sair de acordo com o fifo
             aux = j;                                                                  // guarda a posição e sai do laco
             break;
         }
@@ -87,6 +87,82 @@ int second_chance(int8_t** page_table, int num_pages, int prev_page,
 
 int nru(int8_t** page_table, int num_pages, int prev_page,
         int fifo_frm, int num_frames, int clock) {
+
+    int i, validsIndex[num_frames], indexBitR[num_frames], indexBitM[num_frames], countBitROne = 0, countBitMOne = 0, countIndex = 0;
+
+    for(i = 0; i < num_pages; i++){
+        if(page_table[i][PT_MAPPED] == 1){
+                validsIndex[countIndex] = i;
+                countIndex++;
+                if(page_table[i][PT_REFERENCE_BIT] == 1){
+                    indexBitR[countBitROne] = i;
+                    countBitROne++;
+                }
+
+                if(page_table[i][PT_DIRTY] == 1){
+                    indexBitM[countBitMOne] = i;
+                    countBitMOne++;
+                }
+        }
+    }
+
+    if((countBitROne == 0 && countBitMOne == 0) || (countBitROne == num_frames && countBitMOne == num_frames)){
+        for(i = 0; i < num_frames; i++){
+            if(page_table[validsIndex[i]][PT_FRAMEID] == fifo_frm){
+                page_table[validsIndex[i]][PT_REFERENCE_BIT] = 1;
+                return validsIndex[i];
+            }
+        }
+    }
+
+    if(countBitROne == 0) {
+        for(i = 0; i < num_frames; i++){
+            if(page_table[indexBitM[i]][PT_DIRTY] == 0){
+                page_table[indexBitM[i]][PT_REFERENCE_BIT] = 1;
+                return indexBitM[i];
+            }
+
+        }
+        return validsIndex[0];
+    }
+
+    if(countBitMOne == 0) {
+        for(i = 0; i < num_frames; i++){
+            if(page_table[indexBitR[i]][PT_REFERENCE_BIT] == 0){
+                page_table[indexBitR[i]][PT_REFERENCE_BIT] = 1;
+                return indexBitR[i];
+            }
+        }
+        return validsIndex[0];
+    }
+
+    if(countBitROne < num_frames && countBitMOne < num_frames){
+         for(i = 0; i < num_frames; i++){
+            if(page_table[validsIndex[i]][PT_REFERENCE_BIT] == 0 && page_table[validsIndex[i]][PT_DIRTY] == 0){
+                page_table[validsIndex[i]][PT_REFERENCE_BIT] = 1;
+                return validsIndex[i];
+            }
+         }
+    }
+
+    if(countBitROne < num_frames){
+         for(i = 0; i < num_frames; i++){
+            if(page_table[validsIndex[i]][PT_REFERENCE_BIT] == 0){
+                page_table[validsIndex[i]][PT_REFERENCE_BIT] = 1;
+                return validsIndex[i];
+            }
+         }
+    }
+
+    if(countBitMOne < num_frames){
+         for(i = 0; i < num_frames; i++){
+            if(page_table[validsIndex[i]][PT_DIRTY] == 0){
+                page_table[validsIndex[i]][PT_REFERENCE_BIT] = 1;
+                return validsIndex[i];
+            }
+         }
+    }
+
     return -1;
 }
 
