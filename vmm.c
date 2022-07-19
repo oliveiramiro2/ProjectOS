@@ -45,20 +45,22 @@ typedef struct {
 int fifo(int8_t** page_table, int num_pages, int prev_page,
          int fifo_frm, int num_frames, int clock) {
 
-	int i;                                                                             // contador p/ for
+	int i, aux;                                                                        // contador p/ for e um aux p/ guardar o indice do fifo p/ evitar bugs
 
     for(i=0; i<num_pages; i++){
     	if(page_table[i][PT_FRAMEID] == fifo_frm && page_table[i][PT_MAPPED] == 1){	   // checa se o frameid e igual ao fifo-frm e se esta mapeado
     		return i;                                                                  // retorna o valor correspondente
+    	}else if(page_table[i][PT_MAPPED] == 1){
+            aux = i;
     	}
 	}
-	return -1;
+	return aux;
 }
 
 int second_chance(int8_t** page_table, int num_pages, int prev_page,
                   int fifo_frm, int num_frames, int clock) {
 
-    int i, j, aux;
+    int i, j, aux;                                                                     // contadores p/ for e um aux p/ guardar o indice do fifo p/ evitar bugs
 
     for(j = 0; j < num_pages; j++){
         if(page_table[j][PT_MAPPED] == 1 && page_table[j][PT_FRAMEID] == fifo_frm){   // busca o primeiro a sair de acordo com o fifo
@@ -76,67 +78,70 @@ int second_chance(int8_t** page_table, int num_pages, int prev_page,
         page_table[i][PT_REFERENCE_BIT] = 0;                                                         // caso tenha recebido a segunda chance seu bit R vira 0
     }
 
-    for(i=0; i<num_pages; i++){
-    	if(page_table[i][PT_FRAMEID] == fifo_frm && page_table[i][PT_MAPPED] == 1){	   // checa se o frameid e igual ao fifo-frm e se esta mapeado
-            page_table[i][PT_REFERENCE_BIT] = 1;
-    		return i;                                                                  // retorna o valor correspondente
-    	}
-	}
-	return -1;
+    page_table[aux][PT_REFERENCE_BIT] = 1;
+	return aux;
 }
 
 int nru(int8_t** page_table, int num_pages, int prev_page,
         int fifo_frm, int num_frames, int clock) {
 
     int i, validsIndex[num_frames], indexBitR[num_frames], indexBitM[num_frames], countBitROne = 0, countBitMOne = 0, countIndex = 0, aux;
+//   cont, indices mapeador       , indices com bit R = 1, indices com bit M = 1, contador de bit R, contador de bit M, contador de indices
 
-    for(i = 0; i < num_pages; i++){
-        if(page_table[i][PT_MAPPED] == 1){
-                validsIndex[countIndex] = i;
-                countIndex++;
-                if(page_table[i][PT_REFERENCE_BIT] == 1){
-                    indexBitR[countBitROne] = i;
-                    countBitROne++;
+    for(i = 0; i < num_pages; i++){                             // primeiro mapearemos todos os valores e seus bits
+        if(page_table[i][PT_MAPPED] == 1){                      // bit mapeado?
+                validsIndex[countIndex] = i;                        // guarda o indice
+                countIndex++;                                       // incrementa o contador de indices
+                if(page_table[i][PT_REFERENCE_BIT] == 1){           // bit R = 1?
+                    indexBitR[countBitROne] = i;                        // guarde o indice
+                    countBitROne++;                                     // incrementa contador bit R
                 }
 
-                if(page_table[i][PT_DIRTY] == 1){
-                    indexBitM[countBitMOne] = i;
-                    countBitMOne++;
+                if(page_table[i][PT_DIRTY] == 1){                   // bit M = 1?
+                    indexBitM[countBitMOne] = i;                        // guarde o indice
+                    countBitMOne++;                                     // incrementa contador bit M
                 }
         }
     }
 
-    if((countBitROne == 0 && countBitMOne == 0) || (countBitROne == num_frames && countBitMOne == num_frames)){
-        aux = rand() % num_frames;
-        page_table[validsIndex[aux]][PT_REFERENCE_BIT] = 1;
+    if((countBitROne == 0 && countBitMOne == 0) || (countBitROne == num_frames && countBitMOne == num_frames)){ // todos indices classe 1 ou 4 ?
+        aux = rand() % num_frames;                                                                              // gera indice aleatorio
+        page_table[validsIndex[aux]][PT_REFERENCE_BIT] = 1;                                                     // e de acordo com o vetor de indices remove
         return validsIndex[aux];
     }
 
-    if(countBitROne == 0) {
-        for(i = 0; i < num_frames; i++){
-            if(page_table[indexBitM[i]][PT_DIRTY] == 0){
-                page_table[indexBitM[i]][PT_REFERENCE_BIT] = 1;
+    if(countBitROne == 0) {                                                         // todos os bit R = 0?
+        for(i = 0; i < num_frames; i++){                                                // checa se algum tem bit M = 0
+            if(page_table[indexBitM[i]][PT_DIRTY] == 0){                                // bit M = 0?
+                page_table[indexBitM[i]][PT_REFERENCE_BIT] = 1;                             // caso haja ele sai
                 return indexBitM[i];
             }
 
         }
-        aux = rand() % num_frames;
+        aux = rand() % num_frames;                                                      // caso não haja são todos da mesma classe e um aleatorio sai
         page_table[validsIndex[aux]][PT_REFERENCE_BIT] = 1;
         return validsIndex[aux];
     }
 
-    if(countBitMOne == 0){
-        for(i = 0; i < num_frames; i++){
-            if(page_table[indexBitR[i]][PT_REFERENCE_BIT] == 0){
-                page_table[indexBitR[i]][PT_REFERENCE_BIT] = 1;
+    if(countBitMOne == 0){                                                           // todos os bit M = 0?
+        for(i = 0; i < num_frames; i++){                                                // checa se algum tem bit R = 0
+            if(page_table[indexBitR[i]][PT_REFERENCE_BIT] == 0){                        // bit R = 0?
+                page_table[indexBitR[i]][PT_REFERENCE_BIT] = 1;                             // caso haja ele sai
                 return indexBitR[i];
             }
         }
-        aux = rand() % num_frames;
+        aux = rand() % num_frames;                                                  // caso não haja são todos da mesma classe e um aleatorio sai
         page_table[validsIndex[aux]][PT_REFERENCE_BIT] = 1;
         return validsIndex[aux];
     }
 
+    // daqui p/ baixo ele verificará alguns caso para que não haja bugs
+
+    // primeiro verifica se tem algum valor com R = 0 e M = 0 e o procura
+
+    // segundo procura se tem algum valor com bit R = 0 e procura o melhor caso
+
+    // terceiro procura se tem algum valor com bit M = 0 e o procura o melhor caso
     if(countBitROne < num_frames && countBitMOne < num_frames){
          for(i = 0; i < num_frames; i++){
             if(page_table[validsIndex[i]][PT_REFERENCE_BIT] == 0 && page_table[validsIndex[i]][PT_DIRTY] == 0){
@@ -170,12 +175,12 @@ int nru(int8_t** page_table, int num_pages, int prev_page,
 int aging(int8_t** page_table, int num_pages, int prev_page,
           int fifo_frm, int num_frames, int clock) {
 
-    int i, minAging = 9999, minAgingIndex = 0;
+    int i, minAging = 9999, minAgingIndex = 0;                  // variavel para armazenar o indice e o valor do menor contador aging
 
-    for(i = 0; i < num_pages; i++){
-        if(page_table[i][PT_MAPPED] == 1){
-            if(page_table[i][PT_AGING_COUNTER] < minAging){
-                minAging = page_table[i][PT_AGING_COUNTER];
+    for(i = 0; i < num_pages; i++){                             // percorrendo o vetor
+        if(page_table[i][PT_MAPPED] == 1){                      // esta mapeado?
+            if(page_table[i][PT_AGING_COUNTER] < minAging){         // contador aging menor que o já registrado?
+                minAging = page_table[i][PT_AGING_COUNTER];             // armazena o valor e o indice
                 minAgingIndex = i;
             }
         }
@@ -187,19 +192,17 @@ int aging(int8_t** page_table, int num_pages, int prev_page,
 int mfu(int8_t** page_table, int num_pages, int prev_page,
           int fifo_frm, int num_frames, int clock) {
 
-    int i, maxAging = 0, minAgingIndex = 0;
+    int i, maxAging = 0, minAgingIndex = 0;                     // variavel para armazenar o indice e o valor do maior contador aging
 
-    for(i = 0; i < num_pages; i++){
-        if(page_table[i][PT_MAPPED] == 1){
-            printf("Id: %d  -  Aging: %d\n", page_table[i][PT_FRAMEID], page_table[i][PT_AGING_COUNTER]);
-            if(page_table[i][PT_AGING_COUNTER] > maxAging){
-                maxAging = page_table[i][PT_AGING_COUNTER];
+    for(i = 0; i < num_pages; i++){                             // percorrendo o vetor
+        if(page_table[i][PT_MAPPED] == 1){                      // esta mapeado?
+            if(page_table[i][PT_AGING_COUNTER] > maxAging){         // contador aging maior que o já registrado?
+                maxAging = page_table[i][PT_AGING_COUNTER];         // armazena o valor e o indice
                 minAgingIndex = i;
             }
         }
     }
 
-    printf("\n\n\nRetirado: %d\n\n", minAgingIndex);
     return minAgingIndex;
 }
 
@@ -236,8 +239,8 @@ void modifyAgingNotUsed(int8_t **page_table, int num_pages, int virt_addrUsed){
     int i;
 
     for(i = 0; i < num_pages; i++){
-        if(page_table[i][PT_MAPPED] == 1 && i != virt_addrUsed){
-            if(page_table[i][PT_AGING_COUNTER] > 0)
+        if(page_table[i][PT_MAPPED] == 1 && i != virt_addrUsed){ // decrementa todos menos o valor acertado
+            if(page_table[i][PT_AGING_COUNTER] > 0)              // verifica se ja e zero
                 page_table[i][PT_AGING_COUNTER] -= 2;
         }
     }
@@ -255,12 +258,13 @@ int simulate(int8_t **page_table, int num_pages, int *prev_page, int *fifo_frm,
         exit(1);
     }
 
+    // verificacao aging e MFU
     if (page_table[virt_addr][PT_MAPPED] == 1) {
         page_table[virt_addr][PT_REFERENCE_BIT] = 1;
-        if(strcmp(algorithm, "aging") == 0){
+        if(strcmp(algorithm, "aging") == 0){ // se o algoritmo for aging incrementa o contador em 4 do enderço e decrementa em 2 os demais
             page_table[virt_addr][PT_AGING_COUNTER] += 4;
             modifyAgingNotUsed(page_table, num_pages, virt_addr);
-        }else if(strcmp(algorithm, "mfu") == 0){
+        }else if(strcmp(algorithm, "mfu") == 0){ // se o algoritmo for MFU incrementa o valor do endereço
             page_table[virt_addr][PT_AGING_COUNTER] += 1;
         }
         return 0; // Not Page Fault!
