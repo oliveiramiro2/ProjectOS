@@ -186,7 +186,21 @@ int aging(int8_t** page_table, int num_pages, int prev_page,
 
 int mfu(int8_t** page_table, int num_pages, int prev_page,
           int fifo_frm, int num_frames, int clock) {
-    return -1;
+
+    int i, maxAging = 0, minAgingIndex = 0;
+
+    for(i = 0; i < num_pages; i++){
+        if(page_table[i][PT_MAPPED] == 1){
+            printf("Id: %d  -  Aging: %d\n", page_table[i][PT_FRAMEID], page_table[i][PT_AGING_COUNTER]);
+            if(page_table[i][PT_AGING_COUNTER] > maxAging){
+                maxAging = page_table[i][PT_AGING_COUNTER];
+                minAgingIndex = i;
+            }
+        }
+    }
+
+    printf("\n\n\nRetirado: %d\n\n", minAgingIndex);
+    return minAgingIndex;
 }
 
 int random_page(int8_t** page_table, int num_pages, int prev_page,
@@ -223,7 +237,8 @@ void modifyAgingNotUsed(int8_t **page_table, int num_pages, int virt_addrUsed){
 
     for(i = 0; i < num_pages; i++){
         if(page_table[i][PT_MAPPED] == 1 && i != virt_addrUsed){
-            page_table[i][PT_AGING_COUNTER] -= 2;
+            if(page_table[i][PT_AGING_COUNTER] > 0)
+                page_table[i][PT_AGING_COUNTER] -= 2;
         }
     }
 }
@@ -281,6 +296,8 @@ int simulate(int8_t **page_table, int num_pages, int *prev_page, int *fifo_frm,
     int8_t *page_table_data = page_table[virt_addr];
     page_table_data[PT_FRAMEID] = next_frame_addr;
 
+
+
     // adicionando ao contador aging quando o endereço entra na memoria
     if(strcmp(algorithm, "aging") == 0){
         page_table[virt_addr][PT_AGING_COUNTER] += 4;
@@ -288,6 +305,7 @@ int simulate(int8_t **page_table, int num_pages, int *prev_page, int *fifo_frm,
     }else if(strcmp(algorithm, "mfu") == 0){
         page_table[virt_addr][PT_AGING_COUNTER] += 1;
     }
+
 
 
     page_table_data[PT_MAPPED] = 1;
@@ -358,6 +376,7 @@ int main(int argc, char **argv) {
             {"second_chance", *second_chance},
             {"nru", *nru},
             {"aging", *aging},
+            {"mfu", *mfu},
             {"random", *random_page}
     };
 
