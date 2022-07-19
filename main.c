@@ -169,7 +169,19 @@ int nru(int8_t** page_table, int num_pages, int prev_page,
 
 int aging(int8_t** page_table, int num_pages, int prev_page,
           int fifo_frm, int num_frames, int clock) {
-    return -1;
+
+    int i, minAging = 9999, minAgingIndex = 0;
+
+    for(i = 0; i < num_pages; i++){
+        if(page_table[i][PT_MAPPED] == 1){
+            if(page_table[i][PT_AGING_COUNTER] < minAging){
+                minAging = page_table[i][PT_AGING_COUNTER];
+                minAgingIndex = i;
+            }
+        }
+    }
+
+    return minAgingIndex;
 }
 
 int mfu(int8_t** page_table, int num_pages, int prev_page,
@@ -202,10 +214,27 @@ int find_next_frame(int *physical_memory, int *num_free_frames,
     return *prev_free;
 }
 
+
+
+// funcao para decrementar o valor do aging dos endereços nao referenciados
+
+void modifyAgingNotUsed(int8_t **page_table, int num_pages, int virt_addrUsed){
+    int i;
+
+    for(i = 0; i < num_pages; i++){
+        if(page_table[i][PT_MAPPED] == 1 && i != virt_addrUsed){
+            page_table[i][PT_AGING_COUNTER] -= 2;
+        }
+    }
+}
+
+
+
+
 int simulate(int8_t **page_table, int num_pages, int *prev_page, int *fifo_frm,
              int *physical_memory, int *num_free_frames, int num_frames,
              int *prev_free, int virt_addr, char access_type,
-             eviction_f evict, int clock) {
+             eviction_f evict, int clock, char algorithm[]) {
     if (virt_addr >= num_pages || virt_addr < 0) {
         printf("Invalid access \n");
         exit(1);
@@ -213,6 +242,12 @@ int simulate(int8_t **page_table, int num_pages, int *prev_page, int *fifo_frm,
 
     if (page_table[virt_addr][PT_MAPPED] == 1) {
         page_table[virt_addr][PT_REFERENCE_BIT] = 1;
+        if(strcmp(algorithm, "aging") == 0){
+            page_table[virt_addr][PT_AGING_COUNTER] += 4;
+            modifyAgingNotUsed(page_table, num_pages, virt_addr);
+        }else if(strcmp(algorithm, "mfu") == 0){
+            page_table[virt_addr][PT_AGING_COUNTER] += 1;
+        }
         return 0; // Not Page Fault!
     }
 
@@ -245,6 +280,16 @@ int simulate(int8_t **page_table, int num_pages, int *prev_page, int *fifo_frm,
     // Coloca endereço físico na tabela de páginas!
     int8_t *page_table_data = page_table[virt_addr];
     page_table_data[PT_FRAMEID] = next_frame_addr;
+
+    // adicionando ao contador aging quando o endereço entra na memoria
+    if(strcmp(algorithm, "aging") == 0){
+        page_table[virt_addr][PT_AGING_COUNTER] += 4;
+
+    }else if(strcmp(algorithm, "mfu") == 0){
+        page_table[virt_addr][PT_AGING_COUNTER] += 1;
+    }
+
+
     page_table_data[PT_MAPPED] = 1;
     if (access_type == WRITE) {
         page_table_data[PT_DIRTY] = 1;
@@ -263,7 +308,7 @@ int simulate(int8_t **page_table, int num_pages, int *prev_page, int *fifo_frm,
 
 void run(int8_t **page_table, int num_pages, int *prev_page, int *fifo_frm,
          int *physical_memory, int *num_free_frames, int num_frames,
-         int *prev_free, eviction_f evict, int clock_freq) {
+         int *prev_free, eviction_f evict, int clock_freq, char algorithm[]) {
     int virt_addr;
     char access_type;
     int i = 0;
@@ -275,7 +320,7 @@ void run(int8_t **page_table, int num_pages, int *prev_page, int *fifo_frm,
         clock = ((i+1) % clock_freq) == 0;
         faults += simulate(page_table, num_pages, prev_page, fifo_frm,
                            physical_memory, num_free_frames, num_frames, prev_free,
-                           virt_addr, access_type, evict, clock);
+                           virt_addr, access_type, evict, clock, algorithm);
         i++;
     }
     printf("%d\n", faults);
@@ -356,7 +401,7 @@ int main(int argc, char **argv) {
     // Roda o simulador
     srand(time(NULL));
     run(page_table, num_pages, &prev_page, &fifo_frm, physical_memory,
-        &num_free_frames, num_frames, &prev_free, evict, clock_freq);
+        &num_free_frames, num_frames, &prev_free, evict, clock_freq, algorithm);
 
     // Liberando os mallocs
     for (int i = 0; i < num_pages; i++) {
