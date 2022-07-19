@@ -16,9 +16,9 @@
       <h4>Baixe o repositório com o comando:</h4>
      <p>git clone https://github.com/oliveiramiro2/ProjectOS.git.</p>
      <p>Procure sua respectiva pasta e abra um prompt de comando e digite:</p>
-     <p> "gcc -Wall vmm.c -o vmm" ou "gcc -Wall main.c -o vmm" e então o progrma será compilado.</p>
+     <p> "gcc -Wall vmm.c -o vmm" ou "gcc -Wall main.c -o vmm" e então o progrma será compilado e isso gerará um executável.</p>
      <p>Após realizada a compilação podemos executar o programa com:</p>
-     <p> "./vmm random 10 < anomaly.dat" isso gerará um executável.</p>
+     <p> "./vmm random 10 < anomaly.dat".</p>
      <br />
      <div align='start'>
           <ul>
